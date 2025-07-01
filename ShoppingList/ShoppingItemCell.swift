@@ -53,14 +53,13 @@ class ShoppingItemCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    override func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
-        print("cliando em \(selected)")
-    }
-    
     func configure(with item: ShoppingItem) {
         nameLabel.text = item.name
         checkmarkImageView.image = item.isPurchased ? UIImage(systemName: "checkmark.circle.fill") : nil
     }
+    
+//    override func setSelected(_ selected: Bool, animated: Bool) {
+//        super.setSelected(selected, animated: animated)
+//    }
 
 }

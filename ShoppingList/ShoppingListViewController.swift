@@ -9,7 +9,7 @@ import UIKit
 
 class ShoppingListViewController: UIViewController {
     
-    private var items: [String] = [] {
+    private var items: [ShoppingItem] = [] {
         didSet {
             saveItems()
             updateEmptyState()
@@ -52,6 +52,7 @@ class ShoppingListViewController: UIViewController {
         title = "Lista de compras"
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.register(ShoppingItemCell.self, forCellReuseIdentifier: ShoppingItemCell.identifier)
         
         [tableView, emptyStateLabel, addButton].forEach {
             view.addSubview($0)
@@ -80,13 +81,13 @@ class ShoppingListViewController: UIViewController {
     }
     
     @objc private func addItemTapped() {
-        print("Adicionando item na lista.")
         let alert = UIAlertController(title: "Novo item", message: "Digite o item que deseja comprar", preferredStyle: .alert)
         alert.addTextField()
         
         let addAction = UIAlertAction(title: "Adicionar", style: .default) { [weak self] _ in
-            if let item = alert.textFields?.first?.text, !item.isEmpty {
-                self?.items.append(item)
+            if let itemName = alert.textFields?.first?.text, !itemName.isEmpty {
+                let newItem = ShoppingItem(name: itemName, isPurchased: false)
+                self?.items.append(newItem)
                 self?.tableView.reloadData()
             }
         }
@@ -98,7 +99,10 @@ class ShoppingListViewController: UIViewController {
     }
     
     private func saveItems() {
-        UserDefaults.standard.set(items, forKey: "ListaCompras")
+        let names = items.map {$0.name}
+        let purchased = items.map {$0.isPurchased}
+        UserDefaults.standard.set(names, forKey: "itemNames")
+        UserDefaults.standard.set(purchased, forKey: "itemPurchased")
     }
     
     private func updateEmptyState() {
@@ -106,22 +110,32 @@ class ShoppingListViewController: UIViewController {
     }
     
     private func loadItems() {
-        items = UserDefaults.standard.stringArray(forKey: "ListaCompras") ?? []
+        let names = UserDefaults.standard.stringArray(forKey: "itemNames") ?? []
+        let purchased = UserDefaults.standard.array(forKey: "itemPurchased") as? [Bool] ?? []
+        
+        items = zip(names,purchased).map {ShoppingItem(name: $0, isPurchased: $1)}
         updateEmptyState()
     }
 }
 
 extension ShoppingListViewController: UITableViewDelegate, UITableViewDataSource {
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         items.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = ShoppingItemCell()
-//        cell.textLabel?.text = items[indexPath.row]
-        let shopping = ShoppingItem(name: items[indexPath.row], isPurchased: true)
-        cell.configure(with: shopping)
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: ShoppingItemCell.identifier, for: indexPath) as? ShoppingItemCell else {
+            return UITableViewCell()
+        }
+        let item = items[indexPath.row]
+        cell.configure(with: item)
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        items[indexPath.row].isPurchased.toggle()
+        tableView.reloadRows(at: [indexPath], with: .automatic)
     }
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {

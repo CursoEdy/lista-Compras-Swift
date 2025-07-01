@@ -11,7 +11,8 @@ class ShoppingListViewController: UIViewController {
     
     private var items: [String] = [] {
         didSet {
-            
+            saveItems()
+            updateEmptyState()
         }
     }
     
@@ -27,11 +28,23 @@ class ShoppingListViewController: UIViewController {
         return label
     }()
     
+    private let addButton: UIButton = {
+        let button = UIButton()
+        button.setTitle("Adicionar item", for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = .systemBlue
+        button.layer.cornerRadius = 8
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
+        return button
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
     
         setupView()
         setupConstraints()
+        updateEmptyState()
+        loadItems()
     }
     
     private func setupView() {
@@ -40,10 +53,12 @@ class ShoppingListViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         
-        [tableView, emptyStateLabel].forEach {
+        [tableView, emptyStateLabel, addButton].forEach {
             view.addSubview($0)
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
+        
+        addButton.addTarget(self , action: #selector(addItemTapped), for: .touchUpInside)
     }
     
     private func setupConstraints() {
@@ -55,11 +70,44 @@ class ShoppingListViewController: UIViewController {
             
             emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
+            addButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            addButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+            addButton.heightAnchor.constraint(equalToConstant: 44),
+            addButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+            
         ])
+    }
+    
+    @objc private func addItemTapped() {
+        print("Adicionando item na lista.")
+        let alert = UIAlertController(title: "Novo item", message: "Digite o item que deseja comprar", preferredStyle: .alert)
+        alert.addTextField()
+        
+        let addAction = UIAlertAction(title: "Adicionar", style: .default) { [weak self] _ in
+            if let item = alert.textFields?.first?.text, !item.isEmpty {
+                self?.items.append(item)
+                self?.tableView.reloadData()
+            }
+        }
+        
+        alert.addAction(addAction)
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        
+        present(alert, animated: true)
+    }
+    
+    private func saveItems() {
+        UserDefaults.standard.set(items, forKey: "ListaCompras")
     }
     
     private func updateEmptyState() {
         emptyStateLabel.isHidden = !items.isEmpty
+    }
+    
+    private func loadItems() {
+        items = UserDefaults.standard.stringArray(forKey: "ListaCompras") ?? []
+        updateEmptyState()
     }
 }
 

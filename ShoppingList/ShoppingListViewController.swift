@@ -117,8 +117,10 @@ extension ShoppingListViewController: UITableViewDelegate, UITableViewDataSource
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell()
-        cell.textLabel?.text = items[indexPath.row]
+        let cell = ShoppingItemCell()
+//        cell.textLabel?.text = items[indexPath.row]
+        let shopping = ShoppingItem(name: items[indexPath.row], isPurchased: true)
+        cell.configure(with: shopping)
         return cell
     }
     

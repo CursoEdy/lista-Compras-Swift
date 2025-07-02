@@ -6,15 +6,14 @@
 //
 
 import UIKit
+import CoreData
 
 class ShoppingListViewController: UIViewController {
     
-    private var items: [ShoppingItem] = [] {
-        didSet {
-            saveItems()
-            updateEmptyState()
-        }
-    }
+    //Acessar o context
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
+    private var items: [ShoppingItem] = []
     
     private let tableView = UITableView()
     
@@ -85,11 +84,17 @@ class ShoppingListViewController: UIViewController {
         alert.addTextField()
         
         let addAction = UIAlertAction(title: "Adicionar", style: .default) { [weak self] _ in
-            if let itemName = alert.textFields?.first?.text, !itemName.isEmpty {
-                let newItem = ShoppingItem(name: itemName, isPurchased: false)
-                self?.items.append(newItem)
-                self?.tableView.reloadData()
-            }
+            
+            guard let self = self, let itemName = alert.textFields?.first?.text, !itemName.isEmpty else { return }
+            
+            let newItem = ShoppingItem(context: self.context)
+            newItem.name = itemName
+            newItem.isPurchased = false
+            
+            self.items.append(newItem)
+            self.saveContext()
+            self.tableView.reloadData()
+            self.updateEmptyState()
         }
         
         alert.addAction(addAction)
@@ -98,11 +103,12 @@ class ShoppingListViewController: UIViewController {
         present(alert, animated: true)
     }
     
-    private func saveItems() {
-        let names = items.map {$0.name}
-        let purchased = items.map {$0.isPurchased}
-        UserDefaults.standard.set(names, forKey: "itemNames")
-        UserDefaults.standard.set(purchased, forKey: "itemPurchased")
+    private func saveContext() {
+        do {
+            try context.save()
+        } catch {
+            print("Erro ao salvar no core data: \(error)")
+        }
     }
     
     private func updateEmptyState() {
@@ -110,11 +116,15 @@ class ShoppingListViewController: UIViewController {
     }
     
     private func loadItems() {
-        let names = UserDefaults.standard.stringArray(forKey: "itemNames") ?? []
-        let purchased = UserDefaults.standard.array(forKey: "itemPurchased") as? [Bool] ?? []
+        let request: NSFetchRequest<ShoppingItem> = ShoppingItem.fetchRequest()
         
-        items = zip(names,purchased).map {ShoppingItem(name: $0, isPurchased: $1)}
-        updateEmptyState()
+        do {
+            items = try context.fetch(request)
+            tableView.reloadData()
+            updateEmptyState()
+        } catch {
+            print("Erro ao buscar itens: \(error)")
+        }
     }
 }
 
@@ -134,16 +144,11 @@ extension ShoppingListViewController: UITableViewDelegate, UITableViewDataSource
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        items[indexPath.row].isPurchased.toggle()
+        let item = items[indexPath.row]
+        item.isPurchased.toggle()
+        saveContext()
         tableView.reloadRows(at: [indexPath], with: .automatic)
     }
-    
-//    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-//        if editingStyle == .delete {
-//            items.remove(at: indexPath.row)
-//            tableView.deleteRows(at: [indexPath], with: .automatic)
-//        }
-//    }
     
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
             
@@ -155,8 +160,16 @@ extension ShoppingListViewController: UITableViewDelegate, UITableViewDataSource
         editAction.backgroundColor = .systemOrange
         
         let deleteAction = UIContextualAction(style: .destructive, title: "Excluir") { [weak self] _, _, completion in
-            self?.items.remove(at: indexPath.row)
+            guard let self = self else { return }
+            
+            let itemToDelete = self.items[indexPath.row]
+            self.context.delete(itemToDelete)
+            self.items.remove(at: indexPath.row)
+            
+            self.saveContext()
             tableView.deleteRows(at: [indexPath], with: .automatic)
+            self.updateEmptyState()
+            
             completion(true)
         }
         
@@ -171,10 +184,11 @@ extension ShoppingListViewController: UITableViewDelegate, UITableViewDataSource
         }
         
         let saveAction = UIAlertAction(title: "Salvar", style: .default) { [weak self] _ in
-            if let newName = alert.textFields?.first?.text, !newName.isEmpty {
-                self?.items[index].name = newName
-                self?.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
-            }
+            guard let self = self, let newName = alert.textFields?.first?.text, !newName.isEmpty else { return }
+            
+            item.name = newName
+            self.saveContext()
+            self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
         }
         
         alert.addAction(saveAction)

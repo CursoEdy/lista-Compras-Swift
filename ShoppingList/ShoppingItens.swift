@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ShoppingItem {
-    var name: String
-    var isPurchased: Bool
-}
+//struct ShoppingItem {
+//    var name: String
+//    var isPurchased: Bool
+//}

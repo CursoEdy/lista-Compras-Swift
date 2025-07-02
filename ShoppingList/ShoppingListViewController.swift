@@ -138,11 +138,48 @@ extension ShoppingListViewController: UITableViewDelegate, UITableViewDataSource
         tableView.reloadRows(at: [indexPath], with: .automatic)
     }
     
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            items.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
+//    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+//        if editingStyle == .delete {
+//            items.remove(at: indexPath.row)
+//            tableView.deleteRows(at: [indexPath], with: .automatic)
+//        }
+//    }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+            
+        let editAction = UIContextualAction(style: .normal, title: "Editar") { [weak self] _, _, completion in
+            self?.presentEditAlert(for: indexPath.row)
+            completion(true)
         }
+    
+        editAction.backgroundColor = .systemOrange
+        
+        let deleteAction = UIContextualAction(style: .destructive, title: "Excluir") { [weak self] _, _, completion in
+            self?.items.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+            completion(true)
+        }
+        
+        return UISwipeActionsConfiguration(actions: [deleteAction, editAction])
     }
     
+    private func presentEditAlert(for index: Int) {
+        let item = items[index]
+        let alert = UIAlertController(title: "Edite Item", message: "Atualize o nome do item", preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.text = item.name
+        }
+        
+        let saveAction = UIAlertAction(title: "Salvar", style: .default) { [weak self] _ in
+            if let newName = alert.textFields?.first?.text, !newName.isEmpty {
+                self?.items[index].name = newName
+                self?.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
+            }
+        }
+        
+        alert.addAction(saveAction)
+        alert.addAction(UIAlertAction(title: "Cancelar", style: .cancel))
+        
+        present(alert, animated: true)
+    }
 }
